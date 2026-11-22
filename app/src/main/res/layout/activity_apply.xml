@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/fontName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/fontPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:text="Monofont-style apply steps:"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="bold" />
+
+        <Button android:id="@+id/btnInstallSans" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="1. Install Samsung Sans" />
+        <Button android:id="@+id/btnSelectSans" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="2. Select Samsung Sans font" />
+        <Button android:id="@+id/btnBackup" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="3. Backup Settings to Samsung Cloud" />
+        <Button android:id="@+id/btnSelectTtf" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="4. (Done) Font loaded" />
+        <Button android:id="@+id/btnInstallCustom" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="5. Install Custom Font (replace Samsung Sans)" />
+        <Button android:id="@+id/btnSelectDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="6. Select Default font" />
+        <Button android:id="@+id/btnRestore" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="7. Restore Settings from Samsung Cloud" />
+
+        <TextView
+            android:id="@+id/preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="Preview text ABC 123"
+            android:textSize="24sp" />
+    </LinearLayout>
+</ScrollView>

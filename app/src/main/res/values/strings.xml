@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ZMono</string>
+    <string name="title_fonts">ZFont Fonts</string>
+    <string name="download">Download</string>
+    <string name="apply">Apply (Monofont)</string>
+    <string name="loading">Loading fonts…</string>
+</resources>
