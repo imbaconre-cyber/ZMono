@@ -10,14 +10,23 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FontRepository {
+public final class FontRepository {
     public static final String FULL_JSON = "https://raw.githubusercontent.com/zFont/main/main/full.json";
+
+    private FontRepository() {}
 
     public static List<FontItem> fetchFonts() throws Exception {
         HttpURLConnection conn = (HttpURLConnection) new URL(FULL_JSON).openConnection();
         conn.setConnectTimeout(30000);
         conn.setReadTimeout(60000);
         conn.setRequestProperty("User-Agent", "ZMono/1.0");
+        conn.connect();
+
+        int code = conn.getResponseCode();
+        if (code != HttpURLConnection.HTTP_OK) {
+            throw new RuntimeException("HTTP " + code);
+        }
+
         BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
         StringBuilder sb = new StringBuilder();
         String line;
@@ -28,24 +37,29 @@ public class FontRepository {
         JSONObject root = new JSONObject(sb.toString());
         List<FontItem> out = new ArrayList<>();
 
-        // slider
         if (root.has("slider")) {
-            JSONArray slider = root.getJSONArray("slider");
-            for (int i = 0; i < slider.length(); i++) {
-                out.add(parseItem(slider.getJSONObject(i), "Slider"));
+            JSONArray slider = root.optJSONArray("slider");
+            if (slider != null) {
+                for (int i = 0; i < slider.length(); i++) {
+                    JSONObject o = slider.optJSONObject(i);
+                    if (o != null) out.add(parseItem(o, "Slider"));
+                }
             }
         }
 
-        // categories
         if (root.has("categories")) {
-            JSONArray cats = root.getJSONArray("categories");
-            for (int c = 0; c < cats.length(); c++) {
-                JSONObject cat = cats.getJSONObject(c);
-                String name = cat.optString("name", "Fonts");
-                JSONArray items = cat.optJSONArray("items");
-                if (items == null) continue;
-                for (int i = 0; i < items.length(); i++) {
-                    out.add(parseItem(items.getJSONObject(i), name));
+            JSONArray cats = root.optJSONArray("categories");
+            if (cats != null) {
+                for (int c = 0; c < cats.length(); c++) {
+                    JSONObject cat = cats.optJSONObject(c);
+                    if (cat == null) continue;
+                    String name = cat.optString("name", "Fonts");
+                    JSONArray items = cat.optJSONArray("items");
+                    if (items == null) continue;
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject o = items.optJSONObject(i);
+                        if (o != null) out.add(parseItem(o, name));
+                    }
                 }
             }
         }

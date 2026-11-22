@@ -1,143 +1,200 @@
 package app.zmono.font;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Build;
+import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.Settings;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
-    private ListView listView;
+    private RecyclerView recycler;
+    private FontAdapter adapter;
     private ProgressBar progress;
     private TextView status;
-    private final List<FontItem> fonts = new ArrayList<>();
-    private final List<String> labels = new ArrayList<>();
-    private ArrayAdapter<String> adapter;
+    private View emptyState;
+    private MaterialButton retryButton;
+    private MaterialButton applyButton;
+    private TextView previewTitle;
+    private TextView previewText;
+    private TextInputEditText searchInput;
+
+    private final List<FontItem> allFonts = new ArrayList<>();
+    private final List<FontItem> filtered = new ArrayList<>();
+
+    private ExecutorService executor;
+    private Handler mainHandler;
+    private Downloader.Handle previewDownload;
+    private volatile boolean destroyed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        listView = findViewById(R.id.list);
+        executor = Executors.newSingleThreadExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
+
+        recycler = findViewById(R.id.recycler);
         progress = findViewById(R.id.progress);
         status = findViewById(R.id.status);
+        emptyState = findViewById(R.id.emptyState);
+        retryButton = findViewById(R.id.retryButton);
+        applyButton = findViewById(R.id.applyButton);
+        previewTitle = findViewById(R.id.previewTitle);
+        previewText = findViewById(R.id.previewText);
+        searchInput = findViewById(R.id.searchInput);
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, labels);
-        listView.setAdapter(adapter);
+        adapter = new FontAdapter((font, pos) -> onFontSelected(font));
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+        recycler.setAdapter(adapter);
 
-        listView.setOnItemClickListener((parent, view, position, id) -> {
-            if (position >= fonts.size()) return;
-            FontItem f = fonts.get(position);
-            downloadFont(f);
+        applyButton.setOnClickListener(v -> {
+            FontItem sel = adapter.getSelected();
+            if (sel == null) {
+                Toast.makeText(this, R.string.select_font, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent i = new Intent(this, ApplyActivity.class);
+            sel.putExtras(i);
+            startActivity(i);
         });
 
-        ensureStoragePermission();
+        retryButton.setOnClickListener(v -> loadFonts());
+
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilter(s.toString()); }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
         loadFonts();
     }
 
-    private void ensureStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                try {
-                    Intent i = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                    startActivity(i);
-                } catch (Exception e) {
-                    Intent i = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
-                            Uri.parse("package:" + getPackageName()));
-                    startActivity(i);
-                }
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-            }
-        }
-    }
-
     private void loadFonts() {
-        progress.setVisibility(View.VISIBLE);
-        status.setText(getString(R.string.loading));
-        new Thread(() -> {
+        showLoading(true);
+        showEmpty(false);
+        executor.execute(() -> {
             try {
                 List<FontItem> loaded = FontRepository.fetchFonts();
-                runOnUiThread(() -> {
-                    fonts.clear();
-                    fonts.addAll(loaded);
-                    labels.clear();
-                    for (FontItem f : loaded) {
-                        labels.add(f.name + "  (" + f.size + ") - " + f.category);
-                    }
-                    adapter.notifyDataSetChanged();
-                    progress.setVisibility(View.GONE);
-                    status.setText("Loaded " + loaded.size() + " fonts");
+                mainHandler.post(() -> {
+                    if (destroyed) return;
+                    allFonts.clear();
+                    allFonts.addAll(loaded);
+                    applyFilter(searchInput.getText() == null ? "" : searchInput.getText().toString());
+                    status.setText(getString(R.string.loaded_fonts, loaded.size()));
+                    showLoading(false);
+                    showEmpty(filtered.isEmpty());
                 });
             } catch (Exception e) {
-                runOnUiThread(() -> {
-                    progress.setVisibility(View.GONE);
-                    status.setText("Failed: " + e.getMessage());
-                    Toast.makeText(this, "Load failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                mainHandler.post(() -> {
+                    if (destroyed) return;
+                    status.setText(getString(R.string.failed_load, e.getMessage()));
+                    showLoading(false);
+                    showEmpty(true);
+                    Snackbar.make(findViewById(R.id.root), getString(R.string.failed_load, e.getMessage()), Snackbar.LENGTH_LONG)
+                            .setAction(R.string.retry, v -> loadFonts()).show();
                 });
             }
-        }).start();
+        });
     }
 
-    private void downloadFont(FontItem f) {
-        File out = Downloader.targetFile(f.name);
-        Toast.makeText(this, "Downloading " + f.name, Toast.LENGTH_SHORT).show();
-        progress.setVisibility(View.VISIBLE);
-        Downloader.download(f.downloadUrl(), out, new Downloader.Progress() {
-            @Override
-            public void onProgress(long downloaded, long total) {
-                runOnUiThread(() -> {
-                    if (total > 0) {
-                        int pct = (int) (downloaded * 100 / total);
-                        status.setText("Downloading " + f.name + ": " + pct + "%");
-                    } else {
-                        status.setText("Downloading " + f.name + ": " + (downloaded / 1024) + " KB");
-                    }
-                });
+    private void applyFilter(String query) {
+        filtered.clear();
+        String q = query == null ? "" : query.trim().toLowerCase();
+        for (FontItem f : allFonts) {
+            if (q.isEmpty() || f.name.toLowerCase().contains(q) || f.category.toLowerCase().contains(q)) {
+                filtered.add(f);
             }
+        }
+        adapter.setItems(filtered);
+        showEmpty(filtered.isEmpty() && !allFonts.isEmpty());
+    }
+
+    private void onFontSelected(FontItem font) {
+        previewTitle.setText(font.name);
+        previewText.setText(font.name + " — " + getString(R.string.preview_sample));
+        previewText.setTypeface(Typeface.DEFAULT);
+        applyButton.setEnabled(false);
+
+        // Cancel previous preview download
+        if (previewDownload != null) previewDownload.cancel();
+
+        File out = Downloader.targetFile(font.name);
+        if (out.exists() && out.length() > 0) {
+            try {
+                previewText.setTypeface(Typeface.createFromFile(out));
+                applyButton.setEnabled(true);
+                status.setText(R.string.preview_ready);
+            } catch (Exception e) {
+                status.setText(getString(R.string.preview_failed, e.getMessage()));
+            }
+            return;
+        }
+
+        status.setText(R.string.downloading_preview);
+        previewDownload = Downloader.download(font.downloadUrl(), out, new Downloader.Callback() {
+            @Override
+            public void onProgress(long downloaded, long total) { /* no-op for preview */ }
 
             @Override
-            public void onDone(File file) {
-                runOnUiThread(() -> {
-                    progress.setVisibility(View.GONE);
-                    status.setText("Saved: " + file.getAbsolutePath());
-                    Toast.makeText(MainActivity.this, "Downloaded to " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                    // open apply flow
-                    Intent i = new Intent(MainActivity.this, ApplyActivity.class);
-                    i.putExtra("fontPath", file.getAbsolutePath());
-                    i.putExtra("fontName", f.name);
-                    startActivity(i);
+            public void onSuccess(File file) {
+                mainHandler.post(() -> {
+                    if (destroyed) return;
+                    try {
+                        previewText.setTypeface(Typeface.createFromFile(file));
+                        applyButton.setEnabled(true);
+                        status.setText(R.string.preview_ready);
+                    } catch (Exception e) {
+                        status.setText(getString(R.string.preview_failed, e.getMessage()));
+                    }
                 });
             }
 
             @Override
             public void onError(Exception e) {
-                runOnUiThread(() -> {
-                    progress.setVisibility(View.GONE);
-                    status.setText("Download error: " + e.getMessage());
-                    Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                mainHandler.post(() -> {
+                    if (destroyed) return;
+                    status.setText(getString(R.string.preview_failed, e.getMessage()));
                 });
             }
-        });
+        }, executor);
+    }
+
+    private void showLoading(boolean show) {
+        progress.setVisibility(show ? View.VISIBLE : View.GONE);
+        recycler.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+    private void showEmpty(boolean show) {
+        emptyState.setVisibility(show ? View.VISIBLE : View.GONE);
+        recycler.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    protected void onDestroy() {
+        destroyed = true;
+        if (previewDownload != null) previewDownload.cancel();
+        if (executor != null) executor.shutdownNow();
+        super.onDestroy();
     }
 }

@@ -1,7 +1,67 @@
 <resources>
     <string name="app_name">ZMono</string>
+
+    <!-- Main screen -->
     <string name="title_fonts">ZFont Fonts</string>
-    <string name="download">Download</string>
-    <string name="apply">Apply (Monofont)</string>
-    <string name="loading">Loading fonts…</string>
+    <string name="search_hint">Search fonts…</string>
+    <string name="loading_fonts">Loading fonts…</string>
+    <string name="loaded_fonts">Loaded %1$d fonts</string>
+    <string name="failed_load">Failed to load fonts: %1$s</string>
+    <string name="no_fonts">No fonts found.</string>
+    <string name="retry">Retry</string>
+    <string name="select_font">Select a font to preview</string>
+    <string name="preview_sample">The quick brown fox jumps over the lazy dog 0123456789</string>
+    <string name="continue_apply">Continue to Apply</string>
+    <string name="downloading_preview">Downloading preview…</string>
+    <string name="preview_ready">Preview ready</string>
+    <string name="preview_failed">Preview failed: %1$s</string>
+
+    <!-- Apply screen -->
+    <string name="apply_title">Apply Font</string>
+    <string name="font_name_label">Font: %1$s</string>
+    <string name="font_size_label">Size: %1$s</string>
+    <string name="font_category_label">Category: %1$s</string>
+    <string name="font_path_label">Saved to: %1$s</string>
+    <string name="step_status_pending">Pending</string>
+    <string name="step_status_done">Done</string>
+    <string name="step_status_working">Working…</string>
+    <string name="step_status_failed">Failed</string>
+
+    <string name="step1_title">1. Install Samsung Sans</string>
+    <string name="step1_desc">Install the Samsung Sans font from Galaxy Store so it can be replaced.</string>
+    <string name="step1_action">Open Galaxy Store</string>
+
+    <string name="step2_title">2. Select Samsung Sans</string>
+    <string name="step2_desc">Set Samsung Sans as the active system font.</string>
+    <string name="step2_action">Open Font Settings</string>
+
+    <string name="step3_title">3. Backup Settings</string>
+    <string name="step3_desc">Back up only Settings to Samsung Cloud.</string>
+    <string name="step3_action">Open Backup</string>
+
+    <string name="step4_title">4. Download Font</string>
+    <string name="step4_desc">Download the selected font to your device.</string>
+    <string name="step4_action">Download</string>
+
+    <string name="step5_title">5. Install Custom Font</string>
+    <string name="step5_desc">Replace Samsung Sans with the downloaded font (monofont trick).</string>
+    <string name="step5_action">Show Instructions</string>
+
+    <string name="step6_title">6. Select Default Font</string>
+    <string name="step6_desc">Switch back to the default font before restoring.</string>
+    <string name="step6_action">Open Font Settings</string>
+
+    <string name="step7_title">7. Restore Settings</string>
+    <string name="step7_desc">Restore Settings from Samsung Cloud to apply the custom font.</string>
+    <string name="step7_action">Open Restore</string>
+
+    <string name="download_progress">Downloading %1$s: %2$d%%</string>
+    <string name="download_done">Downloaded to %1$s</string>
+    <string name="download_failed">Download failed: %1$s</string>
+
+    <string name="apply_instructions_title">Install Custom Font</string>
+    <string name="apply_instructions">Font saved to:\n%1$s\n\nMonofont trick:\n1. Uninstall Samsung Sans.\n2. Install the font package containing this TTF.\n3. Restore Settings from Samsung Cloud.\n\nZMono cannot repackage APKs automatically; use #mono_ or a Magisk module if needed.</string>
+
+    <string name="open_settings_failed">Could not open settings. Please do it manually.</string>
+    <string name="snackbar_retry">Retry</string>
 </resources>
